@@ -480,7 +480,7 @@ def calculate_debt_n1(collateral: uint256, debt: uint256, N: uint256) -> int256:
 
 
 @internal
-def _deposit_collateral(amount: uint256, mvalue: uint256):
+def _transfer_collateral(_to: address, amount: uint256, mvalue: uint256):
     """
     Deposits raw ETH, WETH or both at the same time
     """
@@ -489,9 +489,9 @@ def _deposit_collateral(amount: uint256, mvalue: uint256):
     diff: uint256 = amount - mvalue  # dev: Incorrect ETH amount
     if mvalue > 0:
         WETH(COLLATERAL_TOKEN.address).deposit(value=mvalue)
-        assert COLLATERAL_TOKEN.transferFrom(self, AMM.address, mvalue)
+        assert COLLATERAL_TOKEN.transferFrom(self, _to, mvalue)
     if diff > 0:
-        assert COLLATERAL_TOKEN.transferFrom(msg.sender, AMM.address, diff, default_return_value=True)
+        assert COLLATERAL_TOKEN.transferFrom(msg.sender, _to, diff, default_return_value=True)
 
 
 @internal
@@ -528,7 +528,7 @@ def _create_loan(mvalue: uint256, collateral: uint256, debt: uint256, N: uint256
     self._total_debt.rate_mul = rate_mul
 
     AMM.deposit_range(msg.sender, collateral, n1, n2, False)
-    self._deposit_collateral(collateral, mvalue)
+    self._transfer_collateral(AMM.address, collateral, mvalue)
 
     STABLECOIN.transfer(msg.sender, debt)
     self.minted += debt
@@ -549,6 +549,13 @@ def create_loan(collateral: uint256, debt: uint256, N: uint256):
            can be from MIN_TICKS to MAX_TICKS
     """
     self._create_loan(msg.value, collateral, debt, N)
+
+
+@payable
+@external
+@nonreentrant('lock')
+def create_loan_flash(collateral: uint256, debt: uint256, callbacker: address, callback_sig: bytes32):
+    pass
 
 
 @internal
@@ -606,7 +613,7 @@ def add_collateral(collateral: uint256, _for: address = msg.sender):
     if collateral == 0:
         return
     self._add_collateral_borrow(collateral, 0, _for, False)
-    self._deposit_collateral(collateral, msg.value)
+    self._transfer_collateral(AMM.address, collateral, msg.value)
 
 
 @external
@@ -636,7 +643,7 @@ def borrow_more(collateral: uint256, debt: uint256):
         return
     self._add_collateral_borrow(collateral, debt, msg.sender, False)
     if collateral != 0:
-        self._deposit_collateral(collateral, msg.value)
+        self._transfer_collateral(AMM.address, collateral, msg.value)
     STABLECOIN.transfer(msg.sender, debt)
     self.minted += debt
 
