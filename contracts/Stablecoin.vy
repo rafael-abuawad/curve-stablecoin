@@ -42,17 +42,6 @@ def __init__(_name: String[64], _symbol: String[32]):
     log Transfer(ZERO_ADDRESS, msg.sender, 0)
 
 
-@view
-@external
-def decimals() -> uint8:
-    """
-    @notice Get the number of decimals for this token
-    @dev Implemented as a view method to reduce gas costs
-    @return uint8 decimal places
-    """
-    return 18
-
-
 @external
 def transfer(_to : address, _value : uint256) -> bool:
     """
